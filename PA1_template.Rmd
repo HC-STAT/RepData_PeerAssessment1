@@ -7,19 +7,80 @@ output:
 
 
 ## Loading and preprocessing the data
-
+```{r part1, echo=TRUE}
+data = read.csv("activity.csv", header=TRUE, sep=",", na.strings="NA")
+data$date = as.Date(as.character(data$date), "%Y-%m-%d")
+```
 
 
 ## What is mean total number of steps taken per day?
+```{r part2}
+dataTidy = data[!is.na(data$steps), ]
+
+sumStep = aggregate(steps~date, dataTidy, sum)
+
+hist(sumStep$steps, col="blue", main="number of steps taken per day", xlab="Steps Per Day")
+
+meanStep = round(mean(sumStep$steps),digits=2)
+medianStep = median(sumStep$steps)
+
+print(paste("The mean is: ", meanStep))
+print(paste("The median is: ", medianStep))
+```
+
+
+
 
 
 
 ## What is the average daily activity pattern?
+``` {r part3}
+avgStep = aggregate(steps~interval, dataTidy, mean)
 
+plot(avgStep$interval, avgStep$step, type="l", col="brown", xlab="5-min intervals", ylab="Avarage number of steps taken", main="Average daily activity pattern")
+
+maxIdx = which.max(avgStep$steps)
+maxInterval = avgStep[maxIdx, 'interval']
+maxAvgStep = avgStep[maxIdx, 'steps']
+
+print(paste("Interval containing the most steps on average: ", maxInterval))
+print(paste("Average steps for that interval: ", round(maxAvgStep, digits=2)))
+```
 
 
 ## Imputing missing values
+``` {r part4}
 
+totalNA = sum(is.na(data$steps))
+
+print(paste("The total number of rows with NA is: ", totalNA))
+
+naIdx = which(is.na(data$steps))
+naInterval = data[naIdx, 3] 
+fillSteps = sapply(naInterval, function(x) { avgStep[(avgStep$interval==x), 2]})
+
+dataNew = data
+dataNew[naIdx, 'steps'] = fillSteps 
+
+sumStepNew = aggregate(steps~date, dataNew, sum)
+
+hist(sumStepNew$steps, col="red", main="number of steps taken per day", xlab="Steps Per Day")
+
+meanStepNew = mean(sumStepNew$steps)
+medianStepNew = median(sumStepNew$steps)
+
+print(paste("The mean is: ", round(meanStepNew, digits=2)))
+print(paste("The median is: ", round(medianStepNew, digits=2)))
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r part5}
+dataNew['dateIs'] = factor(sapply(dataNew$date, function(x){ if (weekdays(x) == "Sunday" | weekdays(x) == "Saturday") { "weekend" } else { "weekday"} }))
+
+avgStepDateIs = aggregate(steps~interval + dateIs, mean, data=dataNew)
+
+library(lattice)
+xyplot( steps ~ interval | dateIs, data = avgStepDateIs, type="l", layout=c(1,2), xlab="Interval", ylab="Number of steps")
+```
